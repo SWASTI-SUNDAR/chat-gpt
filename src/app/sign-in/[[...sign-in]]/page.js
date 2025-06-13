@@ -2,32 +2,40 @@ import { SignIn } from "@clerk/nextjs";
 
 export default function Page() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
+        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Welcome to ChatGPT Clone
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            Welcome Back
           </h1>
-          <p className="text-muted-foreground">
-            Sign in to start chatting with AI
+          <p className="text-muted-foreground text-lg">
+            Sign in to continue your AI conversation
           </p>
         </div>
+
+        {/* Sign In Component */}
         <SignIn
           appearance={{
             elements: {
-              formButtonPrimary:
-                "bg-primary text-primary-foreground hover:bg-primary/90",
-              card: "bg-card border border-border shadow-lg",
-              headerTitle: "text-foreground",
-              headerSubtitle: "text-muted-foreground",
-              socialButtonsBlockButton:
-                "bg-background border border-border text-foreground hover:bg-accent",
-              formFieldInput:
-                "bg-background border border-border text-foreground",
-              footerActionLink: "text-primary hover:text-primary/90",
+              rootBox: "w-full",
+              card: "shadow-xl rounded-lg",
             },
           }}
         />
+
+        {/* Footer */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Don't have an account?{" "}
+            <a
+              href="/sign-up"
+              className="text-primary hover:text-primary/90 transition-colors duration-200 font-medium"
+            >
+              Sign up here
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );

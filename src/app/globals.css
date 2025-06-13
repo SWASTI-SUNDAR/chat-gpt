@@ -94,4 +94,93 @@
   textarea {
     field-sizing: content;
   }
+
+  /* Clerk component overrides for dark theme - only affects Clerk components */
+  .cl-rootBox {
+    width: 100%;
+  }
+
+  .cl-card,
+  .cl-main {
+    background: hsl(var(--card)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .cl-formButtonPrimary {
+    background: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+    border: none !important;
+  }
+
+  .cl-formButtonPrimary:hover {
+    background: hsl(var(--primary) / 0.9) !important;
+  }
+
+  .cl-formFieldInput {
+    background: hsl(var(--background)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .cl-formFieldInput::placeholder {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  .cl-formFieldInput:focus {
+    border-color: hsl(var(--ring)) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2) !important;
+  }
+
+  .cl-socialButtonsBlockButton {
+    background: hsl(var(--background)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .cl-socialButtonsBlockButton:hover {
+    background: hsl(var(--accent)) !important;
+  }
+
+  .cl-footerActionLink {
+    color: hsl(var(--primary)) !important;
+    text-decoration: none !important;
+  }
+
+  .cl-footerActionLink:hover {
+    color: hsl(var(--primary) / 0.8) !important;
+  }
+
+  .cl-headerTitle,
+  .cl-formHeaderTitle {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .cl-headerSubtitle,
+  .cl-formHeaderSubtitle,
+  .cl-footerActionText {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  .cl-formFieldLabel {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .cl-dividerLine {
+    background: hsl(var(--border)) !important;
+  }
+
+  .cl-dividerText {
+    color: hsl(var(--muted-foreground)) !important;
+    background: hsl(var(--card)) !important;
+  }
+
+  .cl-formFieldErrorText {
+    color: hsl(var(--destructive)) !important;
+  }
+
+  .cl-spinner {
+    color: hsl(var(--primary)) !important;
+  }
 }

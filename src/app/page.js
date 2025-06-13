@@ -15,14 +15,6 @@ export default function Home() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Temporary debug - remove this after fixing
-  useEffect(() => {
-    console.log(
-      "Clerk Publishable Key:",
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-    );
-  }, []);
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
