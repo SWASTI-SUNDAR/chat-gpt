@@ -27,7 +27,7 @@ export default function Home() {
 
   // Load conversation on mount or when conversation ID changes
   useEffect(() => {
-    const conversationId = searchParams.get('conversation');
+    const conversationId = searchParams.get("conversation");
     if (conversationId && isSignedIn) {
       loadConversation(conversationId);
     } else if (isSignedIn) {
@@ -39,17 +39,21 @@ export default function Home() {
 
   const loadConversation = async (conversationId) => {
     try {
-      const response = await fetch(`/api/conversations/${conversationId}/messages`);
+      const response = await fetch(
+        `/api/conversations/${conversationId}/messages`
+      );
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.messages.map(msg => ({
-          id: msg._id,
-          role: msg.role,
-          content: msg.content,
-        })));
+        setMessages(
+          data.messages.map((msg) => ({
+            id: msg._id,
+            role: msg.role,
+            content: msg.content,
+          }))
+        );
         setCurrentConversationId(conversationId);
       } else {
-        console.error('Failed to load conversation');
+        console.error("Failed to load conversation");
         toast({
           title: "Error",
           description: "Failed to load conversation",
@@ -57,7 +61,7 @@ export default function Home() {
         });
       }
     } catch (error) {
-      console.error('Error loading conversation:', error);
+      console.error("Error loading conversation:", error);
     }
   };
 
@@ -145,7 +149,7 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: updatedMessages.map(msg => ({
+          messages: updatedMessages.map((msg) => ({
             role: msg.role,
             content: msg.content,
           })),
@@ -173,7 +177,11 @@ export default function Home() {
       if (data.conversationId && !currentConversationId) {
         setCurrentConversationId(data.conversationId);
         // Update URL without reload
-        window.history.pushState({}, '', `/?conversation=${data.conversationId}`);
+        window.history.pushState(
+          {},
+          "",
+          `/?conversation=${data.conversationId}`
+        );
       }
 
       if (files.length > 0) {

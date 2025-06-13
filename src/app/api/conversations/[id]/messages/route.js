@@ -1,15 +1,15 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import connectDB from '@/lib/mongodb';
-import Conversation from '@/models/Conversation';
-import Message from '@/models/Message';
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import connectDB from "@/lib/mongodb";
+import Conversation from "@/models/Conversation";
+import Message from "@/models/Message";
 
 export async function GET(request, { params }) {
   try {
     const { userId } = auth();
-    
+
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const conversationId = params.id;
@@ -19,22 +19,25 @@ export async function GET(request, { params }) {
     // Verify conversation belongs to user
     const conversation = await Conversation.findOne({
       _id: conversationId,
-      userId
+      userId,
     });
 
     if (!conversation) {
-      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Conversation not found" },
+        { status: 404 }
+      );
     }
 
     const messages = await Message.find({ conversationId })
       .sort({ createdAt: 1 })
-      .select('role content metadata createdAt');
+      .select("role content metadata createdAt");
 
     return NextResponse.json({ messages });
   } catch (error) {
-    console.error('Error fetching messages:', error);
+    console.error("Error fetching messages:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch messages' },
+      { error: "Failed to fetch messages" },
       { status: 500 }
     );
   }
@@ -43,20 +46,23 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   try {
     const { userId } = auth();
-    
+
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const conversationId = params.id;
     const { role, content, metadata } = await request.json();
 
     if (!role || !content) {
-      return NextResponse.json({ error: 'Role and content are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Role and content are required" },
+        { status: 400 }
+      );
     }
 
-    if (!['user', 'assistant'].includes(role)) {
-      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    if (!["user", "assistant"].includes(role)) {
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
     await connectDB();
@@ -64,11 +70,14 @@ export async function POST(request, { params }) {
     // Verify conversation belongs to user
     const conversation = await Conversation.findOne({
       _id: conversationId,
-      userId
+      userId,
     });
 
     if (!conversation) {
-      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Conversation not found" },
+        { status: 404 }
+      );
     }
 
     // Create new message
@@ -89,9 +98,9 @@ export async function POST(request, { params }) {
 
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {
-    console.error('Error creating message:', error);
+    console.error("Error creating message:", error);
     return NextResponse.json(
-      { error: 'Failed to create message' },
+      { error: "Failed to create message" },
       { status: 500 }
     );
   }
