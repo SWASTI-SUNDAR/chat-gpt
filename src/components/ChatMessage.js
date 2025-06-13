@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Copy, Check, Edit3, X, Save } from "lucide-react";
+import { Copy, Check, Edit3, X, Save, Sparkles } from "lucide-react";
 
 const TypingIndicator = () => {
   return (
