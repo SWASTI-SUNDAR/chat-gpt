@@ -263,7 +263,12 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden relative">
+      {/* Enhanced background effects */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(120,119,198,0.1),transparent_50%)] pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(255,119,198,0.1),transparent_50%)] pointer-events-none"></div>
+
       {/* Sidebar */}
       <Sidebar
         key={sidebarKey}
@@ -272,7 +277,7 @@ export default function Home() {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative z-10">
         {/* Top Navigation */}
         <TopNavigation
           chatTitle={`${user.firstName}'s Chat` || "Chat"}
@@ -283,11 +288,11 @@ export default function Home() {
         <div
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto overscroll-contain scroll-smooth"
-          style={{ height: "calc(100vh - 120px)" }}
+          className="flex-1 overflow-y-auto overscroll-contain scroll-smooth backdrop-blur-sm"
+          style={{ height: "calc(100vh - 140px)" }}
         >
-          <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-            <div className="space-y-4 sm:space-y-6">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div className="space-y-6 sm:space-y-8">
               {messages.map((msg) => (
                 <ChatMessage
                   key={msg.id}
@@ -303,18 +308,22 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Scroll to bottom button */}
+        {/* Enhanced scroll to bottom button */}
         {!shouldAutoScroll && (
-          <div className="absolute bottom-20 sm:bottom-24 right-4 sm:right-6 z-10">
+          <div className="absolute bottom-24 sm:bottom-28 right-6 sm:right-8 z-10">
             <button
               onClick={() => {
                 setShouldAutoScroll(true);
                 scrollToBottom("smooth");
               }}
-              className="bg-card border border-border rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+              className="backdrop-blur-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-white/10 rounded-full p-3 shadow-2xl hover:shadow-purple-500/20 transition-all duration-300 hover:scale-110 group"
               title="Scroll to bottom"
             >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-5 h-5 text-purple-400 group-hover:text-purple-300 transition-colors"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path
                   fillRule="evenodd"
                   d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
@@ -325,19 +334,14 @@ export default function Home() {
           </div>
         )}
 
-        {/* Message Input - Sticky at bottom */}
-        <div className="sticky bottom-0 z-20 bg-background/80 backdrop-blur-sm border-t border-border">
-          <MessageInput
-            onSendMessage={handleSendMessage}
-            disabled={isLoading}
-          />
-        </div>
+        {/* Message Input */}
+        <MessageInput onSendMessage={handleSendMessage} disabled={isLoading} />
       </div>
 
-      {/* Overlay for mobile sidebar */}
+      {/* Enhanced overlay for mobile sidebar */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
           onClick={() => setSidebarOpen(false)}
         />
       )}

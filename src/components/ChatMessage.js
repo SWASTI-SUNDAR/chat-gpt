@@ -8,14 +8,14 @@ import { Copy, Check, Edit3, X, Save } from "lucide-react";
 
 const TypingIndicator = () => {
   return (
-    <div className="flex items-center space-x-1 px-4 py-3">
+    <div className="flex items-center space-x-2 px-5 py-4">
       <div className="flex space-x-1">
-        <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-        <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-        <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce"></div>
+        <div className="w-2.5 h-2.5 bg-purple-400/60 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+        <div className="w-2.5 h-2.5 bg-pink-400/60 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+        <div className="w-2.5 h-2.5 bg-indigo-400/60 rounded-full animate-bounce"></div>
       </div>
-      <span className="text-sm text-muted-foreground ml-2">
-        ChatGPT is typing...
+      <span className="text-sm text-muted-foreground/80 ml-3">
+        ChatGPT is thinking...
       </span>
     </div>
   );
@@ -137,10 +137,10 @@ export default function ChatMessage({
   if (isTyping) {
     return (
       <div className="flex gap-4 justify-start">
-        <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold shadow-sm flex-shrink-0">
+        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-xl flex items-center justify-center text-sm font-bold shadow-lg flex-shrink-0 animate-pulse">
           AI
         </div>
-        <div className="max-w-2xl bg-muted rounded-lg shadow-sm">
+        <div className="max-w-2xl backdrop-blur-xl bg-gradient-to-r from-white/5 to-white/10 rounded-2xl shadow-lg border border-white/10">
           <TypingIndicator />
         </div>
       </div>
@@ -154,123 +154,138 @@ export default function ChatMessage({
       onMouseLeave={() => setIsHovered(false)}
     >
       {isAssistant && (
-        <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold shadow-sm flex-shrink-0">
-          AI
+        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-xl flex items-center justify-center text-sm font-bold shadow-lg flex-shrink-0 relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-pink-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <span className="relative z-10">AI</span>
         </div>
       )}
 
       <div className="relative max-w-2xl">
-        {/* Edit button for user messages */}
+        {/* Enhanced edit button for user messages */}
         {isUser && !isEditing && (isHovered || isEditing) && (
           <button
             onClick={handleStartEdit}
-            className="absolute -left-8 top-2 p-1 rounded-md hover:bg-accent transition-colors opacity-0 group-hover:opacity-100"
+            className="absolute -left-10 top-3 p-2 rounded-xl hover:bg-white/10 backdrop-blur-sm border border-white/10 transition-all duration-300 opacity-0 group-hover:opacity-100 hover:scale-110"
             title="Edit message"
           >
-            <Edit3 className="h-4 w-4 text-muted-foreground" />
+            <Edit3 className="h-4 w-4 text-muted-foreground hover:text-purple-400 transition-colors" />
           </button>
         )}
 
         {isEditing ? (
-          /* Edit mode */
+          /* Enhanced edit mode */
           <div className="w-full">
             <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl blur-sm"></div>
               <textarea
                 ref={textareaRef}
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full px-4 py-3 border-2 border-ring rounded-lg resize-none focus:outline-none bg-background text-foreground min-h-[52px] max-h-64 overflow-y-auto"
+                className="w-full px-5 py-4 border-2 border-purple-400/50 rounded-2xl resize-none focus:outline-none focus:border-purple-400 bg-background/80 backdrop-blur-xl text-foreground min-h-[60px] max-h-64 overflow-y-auto relative z-10 shadow-lg"
                 placeholder="Type your message..."
               />
             </div>
 
-            {/* Edit controls */}
-            <div className="flex items-center justify-end gap-2 mt-2">
+            {/* Enhanced edit controls */}
+            <div className="flex items-center justify-end gap-3 mt-3">
               <button
                 onClick={handleCancelEdit}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-xl hover:bg-white/5 backdrop-blur-sm"
               >
-                <X className="h-3 w-3" />
+                <X className="h-4 w-4" />
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
                 disabled={!editedContent.trim() || editedContent === content}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 shadow-lg"
               >
-                <Save className="h-3 w-3" />
+                <Save className="h-4 w-4" />
                 Save & Submit
               </button>
             </div>
 
-            {/* Helper text */}
-            <div className="text-xs text-muted-foreground mt-2">
+            {/* Enhanced helper text */}
+            <div className="text-xs text-muted-foreground/60 mt-2 flex items-center gap-2">
+              <Sparkles className="h-3 w-3 text-purple-400/70" />
               Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to save, Escape to
               cancel
             </div>
           </div>
         ) : (
-          /* Display mode */
+          /* Enhanced display mode */
           <div
-            className={`px-4 py-3 rounded-lg shadow-sm ${
-              isUser ? "bg-primary text-primary-foreground ml-auto" : "bg-muted"
+            className={`px-5 py-4 rounded-2xl shadow-lg transition-all duration-300 group-hover:shadow-xl ${
+              isUser
+                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white ml-auto backdrop-blur-xl border border-purple-400/20"
+                : "backdrop-blur-xl bg-gradient-to-r from-white/5 to-white/10 border border-white/10 hover:border-white/20"
             }`}
           >
-            {isUser ? (
-              <p className="whitespace-pre-wrap">{content}</p>
-            ) : (
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <ReactMarkdown
-                  components={{
-                    code: CodeBlock,
-                    p: ({ children }) => (
-                      <p className="mb-2 last:mb-0">{children}</p>
-                    ),
-                    ul: ({ children }) => (
-                      <ul className="mb-2 last:mb-0 list-disc list-inside">
-                        {children}
-                      </ul>
-                    ),
-                    ol: ({ children }) => (
-                      <ol className="mb-2 last:mb-0 list-decimal list-inside">
-                        {children}
-                      </ol>
-                    ),
-                    li: ({ children }) => <li className="mb-1">{children}</li>,
-                    h1: ({ children }) => (
-                      <h1 className="text-lg font-bold mb-2">{children}</h1>
-                    ),
-                    h2: ({ children }) => (
-                      <h2 className="text-base font-bold mb-2">{children}</h2>
-                    ),
-                    h3: ({ children }) => (
-                      <h3 className="text-sm font-bold mb-2">{children}</h3>
-                    ),
-                    blockquote: ({ children }) => (
-                      <blockquote className="border-l-4 border-border pl-4 my-2 italic">
-                        {children}
-                      </blockquote>
-                    ),
-                    strong: ({ children }) => (
-                      <strong className="font-semibold">{children}</strong>
-                    ),
-                    em: ({ children }) => (
-                      <em className="italic">{children}</em>
-                    ),
-                  }}
-                >
-                  {content}
-                </ReactMarkdown>
-              </div>
+            {/* Shimmer effect for user messages */}
+            {isUser && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl overflow-hidden"></div>
             )}
+
+            <div className="relative z-10">
+              {isUser ? (
+                <p className="whitespace-pre-wrap text-white">{content}</p>
+              ) : (
+                <div className="prose prose-sm max-w-none dark:prose-invert prose-purple">
+                  <ReactMarkdown
+                    components={{
+                      code: CodeBlock,
+                      p: ({ children }) => (
+                        <p className="mb-2 last:mb-0">{children}</p>
+                      ),
+                      ul: ({ children }) => (
+                        <ul className="mb-2 last:mb-0 list-disc list-inside">
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="mb-2 last:mb-0 list-decimal list-inside">
+                          {children}
+                        </ol>
+                      ),
+                      li: ({ children }) => (
+                        <li className="mb-1">{children}</li>
+                      ),
+                      h1: ({ children }) => (
+                        <h1 className="text-lg font-bold mb-2">{children}</h1>
+                      ),
+                      h2: ({ children }) => (
+                        <h2 className="text-base font-bold mb-2">{children}</h2>
+                      ),
+                      h3: ({ children }) => (
+                        <h3 className="text-sm font-bold mb-2">{children}</h3>
+                      ),
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-4 border-border pl-4 my-2 italic">
+                          {children}
+                        </blockquote>
+                      ),
+                      strong: ({ children }) => (
+                        <strong className="font-semibold">{children}</strong>
+                      ),
+                      em: ({ children }) => (
+                        <em className="italic">{children}</em>
+                      ),
+                    }}
+                  >
+                    {content}
+                  </ReactMarkdown>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
 
       {isUser && !isEditing && (
-        <div className="w-8 h-8 bg-secondary text-secondary-foreground rounded-full flex items-center justify-center text-sm font-bold shadow-sm flex-shrink-0">
-          U
+        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 text-white rounded-xl flex items-center justify-center text-sm font-bold shadow-lg flex-shrink-0 relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <span className="relative z-10">U</span>
         </div>
       )}
     </div>

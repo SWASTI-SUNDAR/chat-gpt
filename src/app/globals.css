@@ -6,6 +6,81 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Cool gradient animations */
+  .gradient-bg {
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glow {
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+  }
+
+  .chat-bubble {
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
+@keyframes fade-in-delayed {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @layer base {
@@ -37,25 +112,25 @@
     --radius: 0.5rem;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 220 65% 4%;
+    --foreground: 213 31% 91%;
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 215 20.2% 65.1%;
+    --primary: 263 70% 50%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 263 70% 50%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -68,26 +143,47 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    background-image: radial-gradient(
+        circle at 25% 25%,
+        rgba(120, 119, 198, 0.1) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 75% 75%,
+        rgba(255, 119, 198, 0.1) 0%,
+        transparent 50%
+      );
   }
 
-  /* Custom scrollbar styles */
+  /* Enhanced scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
 
   ::-webkit-scrollbar-track {
     background: hsl(var(--muted));
+    border-radius: 10px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.3);
-    border-radius: 3px;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary)),
+      hsl(var(--primary) / 0.7)
+    );
+    border-radius: 10px;
+    border: 2px solid hsl(var(--muted));
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.9),
+      hsl(var(--primary) / 0.6)
+    );
   }
 
   /* Auto-resizing textarea */
@@ -95,7 +191,7 @@
     field-sizing: content;
   }
 
-  /* Clerk component overrides for dark theme - only affects Clerk components */
+  /* Enhanced Clerk components */
   .cl-rootBox {
     width: 100%;
   }
@@ -105,44 +201,61 @@
     background: hsl(var(--card)) !important;
     border: 1px solid hsl(var(--border)) !important;
     color: hsl(var(--foreground)) !important;
+    backdrop-filter: blur(20px) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
   }
 
   .cl-formButtonPrimary {
-    background: hsl(var(--primary)) !important;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary)),
+      hsl(var(--primary) / 0.8)
+    ) !important;
     color: hsl(var(--primary-foreground)) !important;
     border: none !important;
+    transition: all 0.3s ease !important;
   }
 
   .cl-formButtonPrimary:hover {
-    background: hsl(var(--primary) / 0.9) !important;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.9),
+      hsl(var(--primary) / 0.7)
+    ) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3) !important;
   }
 
   .cl-formFieldInput {
-    background: hsl(var(--background)) !important;
+    background: hsl(var(--background) / 0.7) !important;
     border: 1px solid hsl(var(--border)) !important;
     color: hsl(var(--foreground)) !important;
-  }
-
-  .cl-formFieldInput::placeholder {
-    color: hsl(var(--muted-foreground)) !important;
+    backdrop-filter: blur(10px) !important;
+    transition: all 0.3s ease !important;
   }
 
   .cl-formFieldInput:focus {
-    border-color: hsl(var(--ring)) !important;
+    border-color: hsl(var(--primary)) !important;
     outline: none !important;
-    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2) !important;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2) !important;
+    transform: scale(1.02) !important;
   }
 
   .cl-socialButtonsBlockButton {
-    background: hsl(var(--background)) !important;
+    background: hsl(var(--background) / 0.7) !important;
     border: 1px solid hsl(var(--border)) !important;
     color: hsl(var(--foreground)) !important;
+    backdrop-filter: blur(10px) !important;
+    transition: all 0.3s ease !important;
   }
 
   .cl-socialButtonsBlockButton:hover {
     background: hsl(var(--accent)) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
   }
 
+  /* Rest of existing Clerk styles... */
   .cl-footerActionLink {
     color: hsl(var(--primary)) !important;
     text-decoration: none !important;
@@ -182,5 +295,22 @@
 
   .cl-spinner {
     color: hsl(var(--primary)) !important;
+  }
+
+  .animate-fade-in-delayed {
+    animation: fade-in-delayed 0.6s ease-out 0.3s forwards;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
