@@ -21,7 +21,7 @@ import {
 
 export default function TopNavigation({ chatTitle, onMenuClick }) {
   return (
-    <header className=" border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm bg-card/80">
+    <header className="bg-card border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm bg-card/80">
       {/* Left side - Menu button for mobile */}
       <div className="flex items-center gap-3">
         <button

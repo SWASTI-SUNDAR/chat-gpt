@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import TopNavigation from "@/components/TopNavigation";
+import ChatMessage from "@/components/ChatMessage";
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
 
-  const messages = [
+  const [messages, setMessages] = useState([
     { id: 1, role: "user", content: "Hello! Can you help me with React?" },
     {
       id: 2,
@@ -26,9 +29,43 @@ export default function Home() {
       id: 4,
       role: "assistant",
       content:
-        "The useEffect hook is one of the most important hooks in React. It lets you perform side effects in functional components. Here's what you need to know:\n\n1. **Basic syntax**: useEffect takes a function as its first argument\n2. **Dependency array**: The second argument controls when the effect runs\n3. **Cleanup**: You can return a cleanup function\n\nWould you like me to show you some examples?",
+        "The useEffect hook is one of the most important hooks in React. It lets you perform side effects in functional components. Here's what you need to know:\n\n## Basic Syntax\n\n```javascript\nuseEffect(() => {\n  // Your side effect code here\n}, [dependencies]);\n```\n\n## Key Concepts\n\n1. **Basic syntax**: useEffect takes a function as its first argument\n2. **Dependency array**: The second argument controls when the effect runs\n3. **Cleanup**: You can return a cleanup function\n\n### Example with cleanup:\n\n```javascript\nuseEffect(() => {\n  const timer = setInterval(() => {\n    console.log('Timer tick');\n  }, 1000);\n\n  return () => {\n    clearInterval(timer);\n  };\n}, []);\n```\n\nWould you like me to show you some more specific examples?",
     },
-  ];
+  ]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+
+    const userMessage = {
+      id: Date.now(),
+      role: "user",
+      content: message,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setMessage("");
+    setIsTyping(true);
+
+    // Simulate AI response delay
+    setTimeout(() => {
+      const aiResponse = {
+        id: Date.now() + 1,
+        role: "assistant",
+        content: `I understand you're asking about: "${message}"\n\nThis is a simulated response. In a real application, this would be connected to an AI API like OpenAI's ChatGPT.\n\n**Here's how you might implement this:**\n\n\`\`\`javascript\nconst response = await fetch('/api/chat', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json',\n  },\n  body: JSON.stringify({ message }),\n});\n\nconst data = await response.json();\n\`\`\`\n\nIs there anything specific you'd like to know more about?`,
+      };
+
+      setMessages((prev) => [...prev, aiResponse]);
+      setIsTyping(false);
+    }, 1500 + Math.random() * 1000); // Random delay between 1.5-2.5 seconds
+  };
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -48,33 +85,12 @@ export default function Home() {
           <div className="max-w-3xl mx-auto px-4 py-6">
             <div className="space-y-6">
               {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex gap-4 ${
-                    msg.role === "user" ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  {msg.role === "assistant" && (
-                    <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold shadow-sm">
-                      AI
-                    </div>
-                  )}
-                  <div
-                    className={`max-w-2xl px-4 py-3 rounded-lg shadow-sm ${
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground ml-auto"
-                        : "bg-muted"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                  {msg.role === "user" && (
-                    <div className="w-8 h-8 bg-secondary text-secondary-foreground rounded-full flex items-center justify-center text-sm font-bold shadow-sm">
-                      U
-                    </div>
-                  )}
-                </div>
+                <ChatMessage key={msg.id} message={msg} />
               ))}
+              {isTyping && (
+                <ChatMessage message={{ role: "assistant" }} isTyping={true} />
+              )}
+              <div ref={messagesEndRef} />
             </div>
           </div>
         </div>
@@ -90,18 +106,18 @@ export default function Home() {
                   placeholder="Message ChatGPT..."
                   className="w-full px-4 py-3 pr-12 border border-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-ring bg-background min-h-[52px] max-h-32 shadow-sm"
                   rows={1}
+                  disabled={isTyping}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      // Handle send message
-                      console.log("Send message:", message);
-                      setMessage("");
+                      handleSendMessage();
                     }
                   }}
                 />
                 <button
+                  onClick={handleSendMessage}
                   className="absolute right-2 bottom-2 p-2 rounded-md hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!message.trim()}
+                  disabled={!message.trim() || isTyping}
                 >
                   <Send className="h-4 w-4" />
                 </button>
