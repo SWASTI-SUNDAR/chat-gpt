@@ -114,6 +114,34 @@ export default function Home() {
     }, 1500 + Math.random() * 1000);
   };
 
+  const handleEditMessage = (messageId, newContent) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId ? { ...msg, content: newContent } : msg
+      )
+    );
+
+    // Optionally regenerate AI response after editing user message
+    const messageIndex = messages.findIndex((msg) => msg.id === messageId);
+    if (messageIndex !== -1 && messages[messageIndex].role === "user") {
+      // Remove all messages after the edited message
+      setMessages((prev) => prev.slice(0, messageIndex + 1));
+
+      // Regenerate AI response
+      setIsTyping(true);
+      setTimeout(() => {
+        const aiResponse = {
+          id: Date.now() + 1,
+          role: "assistant",
+          content: `I see you've updated your message to: "${newContent}"\n\nThis is a regenerated response based on your edited message. In a real application, this would trigger a new API call to get a fresh response from the AI.\n\n**The edited message would be processed again:**\n\n\`\`\`javascript\nconst response = await fetch('/api/chat', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json',\n  },\n  body: JSON.stringify({ \n    message: newContent,\n    regenerate: true \n  }),\n});\n\`\`\`\n\nWhat would you like to explore further?`,
+        };
+
+        setMessages((prev) => [...prev, aiResponse]);
+        setIsTyping(false);
+      }, 1500 + Math.random() * 1000);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
@@ -137,7 +165,11 @@ export default function Home() {
           <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
             <div className="space-y-4 sm:space-y-6">
               {messages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} />
+                <ChatMessage
+                  key={msg.id}
+                  message={msg}
+                  onEditMessage={handleEditMessage}
+                />
               ))}
               {isTyping && (
                 <ChatMessage message={{ role: "assistant" }} isTyping={true} />
