@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Send } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import TopNavigation from "@/components/TopNavigation";
@@ -13,35 +13,53 @@ import { useToast } from "@/components/ui/use-toast";
 export default function Home() {
   const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
-  const [messages, setMessages] = useState([
-    { id: 1, role: "user", content: "Hello! Can you help me with React?" },
-    {
-      id: 2,
-      role: "assistant",
-      content:
-        "Of course! I'd be happy to help you with React. What specific aspect would you like to learn about or what problem are you trying to solve?",
-    },
-    {
-      id: 3,
-      role: "user",
-      content: "I want to understand useEffect hook better.",
-    },
-    {
-      id: 4,
-      role: "assistant",
-      content:
-        "The useEffect hook is one of the most important hooks in React. It lets you perform side effects in functional components. Here's what you need to know:\n\n## Basic Syntax\n\n```javascript\nuseEffect(() => {\n  // Your side effect code here\n}, [dependencies]);\n```\n\n## Key Concepts\n\n1. **Basic syntax**: useEffect takes a function as its first argument\n2. **Dependency array**: The second argument controls when the effect runs\n3. **Cleanup**: You can return a cleanup function\n\n### Example with cleanup:\n\n```javascript\nuseEffect(() => {\n  const timer = setInterval(() => {\n    console.log('Timer tick');\n  }, 1000);\n\n  return () => {\n    clearInterval(timer);\n  };\n}, []);\n```\n\nWould you like me to show you some more specific examples?",
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
+
+  // Load conversation on mount or when conversation ID changes
+  useEffect(() => {
+    const conversationId = searchParams.get('conversation');
+    if (conversationId && isSignedIn) {
+      loadConversation(conversationId);
+    } else if (isSignedIn) {
+      // Start with empty conversation
+      setMessages([]);
+      setCurrentConversationId(null);
+    }
+  }, [searchParams, isSignedIn]);
+
+  const loadConversation = async (conversationId) => {
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/messages`);
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data.messages.map(msg => ({
+          id: msg._id,
+          role: msg.role,
+          content: msg.content,
+        })));
+        setCurrentConversationId(conversationId);
+      } else {
+        console.error('Failed to load conversation');
+        toast({
+          title: "Error",
+          description: "Failed to load conversation",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error loading conversation:', error);
+    }
+  };
 
   const scrollToBottom = (behavior = "smooth") => {
     if (messagesEndRef.current && shouldAutoScroll) {
@@ -120,15 +138,19 @@ export default function Home() {
     setIsTyping(true);
 
     try {
-      // Call the Gemini API with user context
+      // Call the chat API with conversation context
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: updatedMessages,
-          userId: user.id, // Include user ID for personalization
+          messages: updatedMessages.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          conversationId: currentConversationId,
+          title: !currentConversationId ? text.substring(0, 50) : undefined,
         }),
       });
 
@@ -146,6 +168,13 @@ export default function Home() {
       };
 
       setMessages((prev) => [...prev, aiResponse]);
+
+      // Update conversation ID if this was a new conversation
+      if (data.conversationId && !currentConversationId) {
+        setCurrentConversationId(data.conversationId);
+        // Update URL without reload
+        window.history.pushState({}, '', `/?conversation=${data.conversationId}`);
+      }
 
       if (files.length > 0) {
         toast({
