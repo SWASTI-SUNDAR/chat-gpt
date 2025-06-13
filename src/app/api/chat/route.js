@@ -1,9 +1,11 @@
 import OpenAI from "openai";
+import { OpenAIStream, StreamingTextResponse } from "ai";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import connectDB from "@/lib/mongodb";
 import Conversation from "@/models/Conversation";
 import Message from "@/models/Message";
+import { trimMessagesToContextWindow } from "@/lib/token-counter";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -66,60 +68,94 @@ export async function POST(request) {
 
     // Save user message to database
     const latestMessage = messages[messages.length - 1];
+    let savedUserMessage;
     if (latestMessage.role === "user") {
-      const userMessage = new Message({
+      savedUserMessage = new Message({
         conversationId: conversation._id,
         role: "user",
         content: latestMessage.content,
       });
 
-      await userMessage.save();
+      await savedUserMessage.save();
     }
 
-    // Prepare messages for OpenAI
-    const openaiMessages = messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-    }));
+    // Trim messages to fit context window (GPT-3.5-turbo has ~16k tokens)
+    const {
+      messages: trimmedMessages,
+      trimmedCount,
+      originalCount,
+      estimatedTokens,
+    } = trimMessagesToContextWindow(messages, 15000);
 
-    // Call OpenAI API
-    const completion = await openai.chat.completions.create({
+    if (trimmedCount < originalCount) {
+      console.log(
+        `Trimmed conversation from ${originalCount} to ${trimmedCount} messages (${estimatedTokens} estimated tokens)`
+      );
+    }
+
+    // Call OpenAI API for streaming
+    const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: openaiMessages,
-      max_tokens: 1000,
+      messages: trimmedMessages,
       temperature: 0.7,
+      max_tokens: 1000,
+      stream: true,
     });
 
-    const assistantMessage = completion.choices[0].message.content;
+    // Convert the response into a friendly text-stream
+    const stream = OpenAIStream(response, {
+      onStart: async () => {
+        // Optional: Handle stream start
+        console.log("Stream started");
+      },
+      onToken: async (token) => {
+        // Optional: Handle each token
+        console.log("Token:", token);
+      },
+      onCompletion: async (completion) => {
+        try {
+          // Save AI response to database after streaming completes
+          const aiMessage = new Message({
+            conversationId: conversation._id,
+            role: "assistant",
+            content: completion,
+            metadata: {
+              model: "gpt-3.5-turbo",
+              tokens: {
+                prompt: 0, // OpenAI streaming doesn't provide token counts
+                completion: 0,
+                total: 0,
+              },
+              trimmed: trimmedCount < originalCount,
+              originalMessageCount: originalCount,
+              trimmedMessageCount: trimmedCount,
+            },
+          });
 
-    // Save AI response to database
-    const aiMessage = new Message({
-      conversationId: conversation._id,
-      role: "assistant",
-      content: assistantMessage,
-      metadata: {
-        model: "gpt-3.5-turbo",
-        tokens: {
-          prompt: completion.usage.prompt_tokens,
-          completion: completion.usage.completion_tokens,
-          total: completion.usage.total_tokens,
-        },
+          await aiMessage.save();
+
+          // Update conversation stats
+          const messageIncrement = savedUserMessage ? 2 : 1;
+          await Conversation.findByIdAndUpdate(conversation._id, {
+            $inc: { messageCount: messageIncrement },
+            lastMessageAt: new Date(),
+          });
+
+          console.log("Streaming completed and saved to database");
+        } catch (error) {
+          console.error("Error saving streamed response:", error);
+        }
       },
     });
 
-    await aiMessage.save();
-
-    // Update conversation stats
-    await Conversation.findByIdAndUpdate(conversation._id, {
-      $inc: { messageCount: 2 }, // User message + AI response
-      lastMessageAt: new Date(),
-    });
-
-    return NextResponse.json({
-      message: assistantMessage,
-      conversationId: conversation._id.toString(),
-      model: "gpt-3.5-turbo",
-      usage: completion.usage,
+    // Return a StreamingTextResponse, which can be consumed by the client
+    return new StreamingTextResponse(stream, {
+      headers: {
+        "X-Conversation-Id": conversation._id.toString(),
+        "X-Trimmed": trimmedCount < originalCount ? "true" : "false",
+        "X-Message-Count": trimmedCount.toString(),
+        "X-Original-Message-Count": originalCount.toString(),
+      },
     });
   } catch (error) {
     console.error("Chat API error:", error);

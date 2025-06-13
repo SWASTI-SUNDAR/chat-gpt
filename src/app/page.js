@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useChat } from "ai/react";
 import { Send } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import TopNavigation from "@/components/TopNavigation";
@@ -17,13 +18,63 @@ export default function Home() {
   const { toast } = useToast();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState(null);
+  const [sidebarKey, setSidebarKey] = useState(0); // Force sidebar refresh
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
-  const [messages, setMessages] = useState([]);
+  // Use Vercel AI SDK's useChat hook for streaming
+  const {
+    messages,
+    input,
+    setInput,
+    append,
+    setMessages,
+    isLoading,
+    error,
+    data,
+  } = useChat({
+    api: "/api/chat",
+    onResponse: (response) => {
+      // Handle response metadata from headers
+      const conversationId = response.headers.get("X-Conversation-Id");
+      const trimmed = response.headers.get("X-Trimmed") === "true";
+      const messageCount = response.headers.get("X-Message-Count");
+      const originalMessageCount = response.headers.get(
+        "X-Original-Message-Count"
+      );
+
+      if (conversationId && !currentConversationId) {
+        setCurrentConversationId(conversationId);
+        window.history.pushState({}, "", `/?conversation=${conversationId}`);
+        // Force sidebar to refresh to show the new conversation
+        setSidebarKey((prev) => prev + 1);
+      }
+
+      // Show trimming notification if applicable
+      if (trimmed) {
+        toast({
+          title: "Context Window Trimmed",
+          description: `Conversation trimmed from ${originalMessageCount} to ${messageCount} messages to fit context window.`,
+          variant: "default",
+        });
+      }
+    },
+    onFinish: (message) => {
+      // Message finished streaming
+      console.log("Streaming finished:", message);
+    },
+    onError: (error) => {
+      console.error("Chat error:", error);
+      toast({
+        title: "Error",
+        description:
+          error.message || "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Load conversation on mount or when conversation ID changes
   useEffect(() => {
@@ -44,13 +95,12 @@ export default function Home() {
       );
       if (response.ok) {
         const data = await response.json();
-        setMessages(
-          data.messages.map((msg) => ({
-            id: msg._id,
-            role: msg.role,
-            content: msg.content,
-          }))
-        );
+        const loadedMessages = data.messages.map((msg) => ({
+          id: msg._id,
+          role: msg.role,
+          content: msg.content,
+        }));
+        setMessages(loadedMessages);
         setCurrentConversationId(conversationId);
       } else {
         console.error("Failed to load conversation");
@@ -83,15 +133,15 @@ export default function Home() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]);
+  }, [messages, isLoading]);
 
   // Force scroll to bottom when typing starts/stops
   useEffect(() => {
-    if (isTyping) {
+    if (isLoading) {
       setShouldAutoScroll(true);
       setTimeout(() => scrollToBottom("smooth"), 100);
     }
-  }, [isTyping]);
+  }, [isLoading]);
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
@@ -131,58 +181,22 @@ export default function Home() {
         : fileDescriptions;
     }
 
-    const userMessage = {
-      id: Date.now(),
-      role: "user",
-      content: messageContent,
-    };
-
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-    setIsTyping(true);
-
+    // Use the streaming append function
     try {
-      // Call the chat API with conversation context
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      await append(
+        {
+          role: "user",
+          content: messageContent,
         },
-        body: JSON.stringify({
-          messages: updatedMessages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          conversationId: currentConversationId,
-          title: !currentConversationId ? text.substring(0, 50) : undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to get response");
-      }
-
-      const data = await response.json();
-
-      const aiResponse = {
-        id: Date.now() + 1,
-        role: "assistant",
-        content: data.message,
-      };
-
-      setMessages((prev) => [...prev, aiResponse]);
-
-      // Update conversation ID if this was a new conversation
-      if (data.conversationId && !currentConversationId) {
-        setCurrentConversationId(data.conversationId);
-        // Update URL without reload
-        window.history.pushState(
-          {},
-          "",
-          `/?conversation=${data.conversationId}`
-        );
-      }
+        {
+          options: {
+            body: {
+              conversationId: currentConversationId,
+              title: !currentConversationId ? text.substring(0, 50) : undefined,
+            },
+          },
+        }
+      );
 
       if (files.length > 0) {
         toast({
@@ -194,59 +208,68 @@ export default function Home() {
         });
       }
     } catch (error) {
-      console.error("Chat API error:", error);
-
-      toast({
-        title: "Error",
-        description:
-          error.message || "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-
-      const errorMessage = {
-        id: Date.now() + 1,
-        role: "assistant",
-        content: `Sorry, I encountered an error: ${error.message}. Please try again or check your internet connection.`,
-      };
-
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
+      console.error("Send message error:", error);
     }
   };
 
-  const handleEditMessage = (messageId, newContent) => {
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId ? { ...msg, content: newContent } : msg
-      )
+  const handleEditMessage = async (messageId, newContent) => {
+    // Find the message index
+    const messageIndex = messages.findIndex((msg) => msg.id === messageId);
+    if (messageIndex === -1) return;
+
+    // Update the message content
+    const updatedMessages = messages.map((msg) =>
+      msg.id === messageId ? { ...msg, content: newContent } : msg
     );
 
-    // Optionally regenerate AI response after editing user message
-    const messageIndex = messages.findIndex((msg) => msg.id === messageId);
-    if (messageIndex !== -1 && messages[messageIndex].role === "user") {
-      // Remove all messages after the edited message
-      setMessages((prev) => prev.slice(0, messageIndex + 1));
+    if (messages[messageIndex].role === "user") {
+      // Remove all messages after the edited message and regenerate
+      const messagesUpToEdit = updatedMessages.slice(0, messageIndex + 1);
+      setMessages(messagesUpToEdit);
 
-      // Regenerate AI response
-      setIsTyping(true);
-      setTimeout(() => {
-        const aiResponse = {
-          id: Date.now() + 1,
-          role: "assistant",
-          content: `I see you've updated your message to: "${newContent}"\n\nThis is a regenerated response based on your edited message. In a real application, this would trigger a new API call to get a fresh response from the AI.\n\n**The edited message would be processed again:**\n\n\`\`\`javascript\nconst response = await fetch('/api/chat', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json',\n  },\n  body: JSON.stringify({ \n    message: newContent,\n    regenerate: true \n  }),\n});\n\`\`\`\n\nWhat would you like to explore further?`,
-        };
+      // Use append to regenerate response with updated context
+      try {
+        await append(
+          {
+            role: "user",
+            content: newContent,
+          },
+          {
+            options: {
+              body: {
+                conversationId: currentConversationId,
+              },
+            },
+          }
+        );
 
-        setMessages((prev) => [...prev, aiResponse]);
-        setIsTyping(false);
-      }, 1500 + Math.random() * 1000);
+        toast({
+          title: "Message updated",
+          description: "Response regenerated based on your edited message.",
+          variant: "success",
+        });
+      } catch (error) {
+        console.error("Regeneration error:", error);
+        toast({
+          title: "Regeneration failed",
+          description: "Failed to regenerate response.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      // Just update the message content for assistant messages
+      setMessages(updatedMessages);
     }
   };
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        key={sidebarKey}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -261,7 +284,7 @@ export default function Home() {
           ref={chatContainerRef}
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto overscroll-contain scroll-smooth"
-          style={{ height: "calc(100vh - 120px)" }} // Adjust for header and input
+          style={{ height: "calc(100vh - 120px)" }}
         >
           <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
             <div className="space-y-4 sm:space-y-6">
@@ -272,7 +295,7 @@ export default function Home() {
                   onEditMessage={handleEditMessage}
                 />
               ))}
-              {isTyping && (
+              {isLoading && (
                 <ChatMessage message={{ role: "assistant" }} isTyping={true} />
               )}
               <div ref={messagesEndRef} className="h-1" />
@@ -304,7 +327,10 @@ export default function Home() {
 
         {/* Message Input - Sticky at bottom */}
         <div className="sticky bottom-0 z-20 bg-background/80 backdrop-blur-sm border-t border-border">
-          <MessageInput onSendMessage={handleSendMessage} disabled={isTyping} />
+          <MessageInput
+            onSendMessage={handleSendMessage}
+            disabled={isLoading}
+          />
         </div>
       </div>
 
