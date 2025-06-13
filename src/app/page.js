@@ -5,12 +5,15 @@ import { Send } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import TopNavigation from "@/components/TopNavigation";
 import ChatMessage from "@/components/ChatMessage";
+import MessageInput from "@/components/MessageInput";
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
   const [messages, setMessages] = useState([
     { id: 1, role: "user", content: "Hello! Can you help me with React?" },
@@ -33,47 +36,91 @@ export default function Home() {
     },
   ]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (behavior = "smooth") => {
+    if (messagesEndRef.current && shouldAutoScroll) {
+      messagesEndRef.current.scrollIntoView({ behavior });
+    }
+  };
+
+  // Check if user is near bottom of chat
+  const handleScroll = () => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } =
+        chatContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShouldAutoScroll(isNearBottom);
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
+  // Force scroll to bottom when typing starts/stops
+  useEffect(() => {
+    if (isTyping) {
+      setShouldAutoScroll(true);
+      setTimeout(() => scrollToBottom("smooth"), 100);
+    }
+  }, [isTyping]);
+
+  const handleSendMessage = async ({ text, files }) => {
+    if (!text.trim() && files.length === 0) return;
+
+    // Create message content
+    let messageContent = text;
+    if (files.length > 0) {
+      const fileDescriptions = files
+        .map((f) => `[Attached: ${f.name}]`)
+        .join(" ");
+      messageContent = text
+        ? `${text}\n\n${fileDescriptions}`
+        : fileDescriptions;
+    }
 
     const userMessage = {
       id: Date.now(),
       role: "user",
-      content: message,
+      content: messageContent,
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setMessage("");
     setIsTyping(true);
 
     // Simulate AI response delay
     setTimeout(() => {
+      let responseContent = `I understand you're asking about: "${text}"`;
+
+      if (files.length > 0) {
+        responseContent += `\n\nI see you've attached ${files.length} file${
+          files.length > 1 ? "s" : ""
+        }:`;
+        files.forEach((file) => {
+          responseContent += `\n- ${file.name} (${file.type})`;
+        });
+        responseContent += `\n\nNote: This is a demo - file processing is not actually implemented yet.`;
+      }
+
+      responseContent += `\n\nThis is a simulated response. In a real application, this would be connected to an AI API like OpenAI's ChatGPT.\n\n**Here's how you might implement this:**\n\n\`\`\`javascript\nconst response = await fetch('/api/chat', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json',\n  },\n  body: JSON.stringify({ message: text, files }),\n});\n\nconst data = await response.json();\n\`\`\`\n\nIs there anything specific you'd like to know more about?`;
+
       const aiResponse = {
         id: Date.now() + 1,
         role: "assistant",
-        content: `I understand you're asking about: "${message}"\n\nThis is a simulated response. In a real application, this would be connected to an AI API like OpenAI's ChatGPT.\n\n**Here's how you might implement this:**\n\n\`\`\`javascript\nconst response = await fetch('/api/chat', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json',\n  },\n  body: JSON.stringify({ message }),\n});\n\nconst data = await response.json();\n\`\`\`\n\nIs there anything specific you'd like to know more about?`,
+        content: responseContent,
       };
 
       setMessages((prev) => [...prev, aiResponse]);
       setIsTyping(false);
-    }, 1500 + Math.random() * 1000); // Random delay between 1.5-2.5 seconds
+    }, 1500 + Math.random() * 1000);
   };
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-0">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top Navigation */}
         <TopNavigation
           chatTitle="React Best Practices"
@@ -81,49 +128,50 @@ export default function Home() {
         />
 
         {/* Chat Messages Area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-4 py-6">
-            <div className="space-y-6">
+        <div
+          ref={chatContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto overscroll-contain scroll-smooth"
+          style={{ height: "calc(100vh - 120px)" }} // Adjust for header and input
+        >
+          <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+            <div className="space-y-4 sm:space-y-6">
               {messages.map((msg) => (
                 <ChatMessage key={msg.id} message={msg} />
               ))}
               {isTyping && (
                 <ChatMessage message={{ role: "assistant" }} isTyping={true} />
               )}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-1" />
             </div>
           </div>
         </div>
 
-        {/* Message Input */}
-        <div className="border-t border-border bg-card sticky bottom-0">
-          <div className="max-w-3xl mx-auto p-4">
-            <div className="flex gap-3 items-end">
-              <div className="flex-1 relative">
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Message ChatGPT..."
-                  className="w-full px-4 py-3 pr-12 border border-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-ring bg-background min-h-[52px] max-h-32 shadow-sm"
-                  rows={1}
-                  disabled={isTyping}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
+        {/* Scroll to bottom button */}
+        {!shouldAutoScroll && (
+          <div className="absolute bottom-20 sm:bottom-24 right-4 sm:right-6 z-10">
+            <button
+              onClick={() => {
+                setShouldAutoScroll(true);
+                scrollToBottom("smooth");
+              }}
+              className="bg-card border border-border rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+              title="Scroll to bottom"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                  clipRule="evenodd"
                 />
-                <button
-                  onClick={handleSendMessage}
-                  className="absolute right-2 bottom-2 p-2 rounded-md hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!message.trim() || isTyping}
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+              </svg>
+            </button>
           </div>
+        )}
+
+        {/* Message Input - Sticky at bottom */}
+        <div className="sticky bottom-0 z-20 bg-background/80 backdrop-blur-sm border-t border-border">
+          <MessageInput onSendMessage={handleSendMessage} disabled={isTyping} />
         </div>
       </div>
 
