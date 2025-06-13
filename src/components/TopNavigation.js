@@ -18,8 +18,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useUser, useClerk } from "@clerk/nextjs";
 
 export default function TopNavigation({ chatTitle, onMenuClick }) {
+  const { user } = useUser();
+  const { signOut } = useClerk();
+
+  const handleSignOut = () => {
+    signOut();
+  };
+
   return (
     <header className="bg-card border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm bg-card/80">
       {/* Left side - Menu button for mobile */}
@@ -57,9 +65,11 @@ export default function TopNavigation({ chatTitle, onMenuClick }) {
           <DropdownMenuTrigger asChild>
             <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="https://github.com/shadcn.png" alt="User" />
+                <AvatarImage src={user?.imageUrl} alt="User" />
                 <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                  JD
+                  {user?.firstName?.charAt(0) ||
+                    user?.emailAddresses[0]?.emailAddress?.charAt(0) ||
+                    "U"}
                 </AvatarFallback>
               </Avatar>
             </button>
@@ -67,9 +77,13 @@ export default function TopNavigation({ chatTitle, onMenuClick }) {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <div className="flex items-center justify-start gap-2 p-2">
               <div className="flex flex-col space-y-1 leading-none">
-                <p className="font-medium text-sm">John Doe</p>
+                <p className="font-medium text-sm">
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user?.firstName || "User"}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  john.doe@example.com
+                  {user?.emailAddresses[0]?.emailAddress}
                 </p>
               </div>
             </div>
@@ -96,7 +110,10 @@ export default function TopNavigation({ chatTitle, onMenuClick }) {
               <span>Help & Support</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={handleSignOut}
+            >
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>

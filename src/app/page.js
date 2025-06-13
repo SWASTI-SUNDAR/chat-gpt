@@ -1,13 +1,28 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import TopNavigation from "@/components/TopNavigation";
 import ChatMessage from "@/components/ChatMessage";
 import MessageInput from "@/components/MessageInput";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Home() {
+  const { isLoaded, isSignedIn, user } = useUser();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  // Temporary debug - remove this after fixing
+  useEffect(() => {
+    console.log(
+      "Clerk Publishable Key:",
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+    );
+  }, []);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -64,6 +79,30 @@ export default function Home() {
     }
   }, [isTyping]);
 
+  // Redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in");
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  // Show loading while checking authentication
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if not signed in (handled by useEffect, but this prevents flash)
+  if (!isSignedIn) {
+    return null;
+  }
+
   const handleSendMessage = async ({ text, files }) => {
     if (!text.trim() && files.length === 0) return;
 
@@ -84,34 +123,67 @@ export default function Home() {
       content: messageContent,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setIsTyping(true);
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      let responseContent = `I understand you're asking about: "${text}"`;
+    try {
+      // Call the Gemini API with user context
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: updatedMessages,
+          userId: user.id, // Include user ID for personalization
+        }),
+      });
 
-      if (files.length > 0) {
-        responseContent += `\n\nI see you've attached ${files.length} file${
-          files.length > 1 ? "s" : ""
-        }:`;
-        files.forEach((file) => {
-          responseContent += `\n- ${file.name} (${file.type})`;
-        });
-        responseContent += `\n\nNote: This is a demo - file processing is not actually implemented yet.`;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to get response");
       }
 
-      responseContent += `\n\nThis is a simulated response. In a real application, this would be connected to an AI API like OpenAI's ChatGPT.\n\n**Here's how you might implement this:**\n\n\`\`\`javascript\nconst response = await fetch('/api/chat', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json',\n  },\n  body: JSON.stringify({ message: text, files }),\n});\n\nconst data = await response.json();\n\`\`\`\n\nIs there anything specific you'd like to know more about?`;
+      const data = await response.json();
 
       const aiResponse = {
         id: Date.now() + 1,
         role: "assistant",
-        content: responseContent,
+        content: data.message,
       };
 
       setMessages((prev) => [...prev, aiResponse]);
+
+      if (files.length > 0) {
+        toast({
+          title: "Files processed",
+          description: `Successfully processed ${files.length} file${
+            files.length > 1 ? "s" : ""
+          }.`,
+          variant: "success",
+        });
+      }
+    } catch (error) {
+      console.error("Chat API error:", error);
+
+      toast({
+        title: "Error",
+        description:
+          error.message || "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+
+      const errorMessage = {
+        id: Date.now() + 1,
+        role: "assistant",
+        content: `Sorry, I encountered an error: ${error.message}. Please try again or check your internet connection.`,
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500 + Math.random() * 1000);
+    }
   };
 
   const handleEditMessage = (messageId, newContent) => {
@@ -151,7 +223,7 @@ export default function Home() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Navigation */}
         <TopNavigation
-          chatTitle="React Best Practices"
+          chatTitle={`${user.firstName}'s Chat` || "Chat"}
           onMenuClick={() => setSidebarOpen(true)}
         />
 
