@@ -1,6 +1,15 @@
 "use client";
 
-import { Menu, Settings, User, LogOut, CreditCard, Users, Plus, HelpCircle } from "lucide-react";
+import {
+  Menu,
+  Settings,
+  User,
+  LogOut,
+  CreditCard,
+  Users,
+  Plus,
+  HelpCircle,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -12,7 +21,7 @@ import {
 
 export default function TopNavigation({ chatTitle, onMenuClick }) {
   return (
-    <header className="bg-card border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm bg-card/80">
+    <header className=" border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm bg-card/80">
       {/* Left side - Menu button for mobile */}
       <div className="flex items-center gap-3">
         <button
@@ -21,7 +30,7 @@ export default function TopNavigation({ chatTitle, onMenuClick }) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        
+
         {/* Optional settings button for desktop */}
         <button className="hidden lg:flex p-2 rounded-md hover:bg-accent transition-colors">
           <Settings className="h-4 w-4" />
