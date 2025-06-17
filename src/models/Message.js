@@ -1,5 +1,24 @@
 import mongoose from "mongoose";
 
+const AttachmentSchema = new mongoose.Schema({
+  id: String, // Original Uploadcare ID
+  name: String,
+  size: Number,
+  type: String, // MIME type
+  uploadcareUrl: String, // Original Uploadcare URL
+  cloudinaryUrl: String, // Final Cloudinary URL
+  cloudinaryPublicId: String, // For deletion purposes
+  isImage: Boolean,
+  dimensions: {
+    width: Number,
+    height: Number,
+  },
+  uploadedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
 const MessageSchema = new mongoose.Schema(
   {
     conversationId: {
@@ -16,6 +35,7 @@ const MessageSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    attachments: [AttachmentSchema], // Array of file attachments
     metadata: {
       model: String,
       tokens: {
@@ -23,13 +43,9 @@ const MessageSchema = new mongoose.Schema(
         completion: Number,
         total: Number,
       },
-      files: [
-        {
-          name: String,
-          size: Number,
-          type: String,
-        },
-      ],
+      trimmed: Boolean,
+      originalMessageCount: Number,
+      trimmedMessageCount: Number,
     },
   },
   {

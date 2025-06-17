@@ -5,6 +5,8 @@ import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Copy, Check, Edit3, X, Save, Sparkles } from "lucide-react";
+import { FileTypeIcon } from "./FileUploadWidget";
+import { ExternalLink, Download } from "lucide-react";
 
 const TypingIndicator = () => {
   return (
@@ -89,7 +91,7 @@ export default function ChatMessage({
   isTyping = false,
   onEditMessage,
 }) {
-  const { role, content, id } = message;
+  const { role, content, id, attachments } = message;
   const isUser = role === "user";
   const isAssistant = role === "assistant";
 
@@ -132,6 +134,91 @@ export default function ChatMessage({
       e.preventDefault();
       handleCancelEdit();
     }
+  };
+
+  const renderAttachments = () => {
+    if (!attachments || attachments.length === 0) return null;
+
+    return (
+      <div className="mt-3 space-y-2">
+        {attachments.map((attachment, index) => (
+          <div
+            key={index}
+            className="border border-white/10 rounded-xl overflow-hidden bg-white/5 backdrop-blur-sm"
+          >
+            {attachment.isImage ? (
+              <div className="relative group">
+                <img
+                  src={attachment.cloudinaryUrl || attachment.uploadcareUrl}
+                  alt={attachment.name}
+                  className="w-full max-w-md h-auto rounded-xl"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <div className="flex gap-2">
+                    <a
+                      href={attachment.cloudinaryUrl || attachment.uploadcareUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 bg-white/90 text-black rounded-lg hover:bg-white transition-colors"
+                      title="View full size"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                    <a
+                      href={attachment.cloudinaryUrl || attachment.uploadcareUrl}
+                      download={attachment.name}
+                      className="p-2 bg-white/90 text-black rounded-lg hover:bg-white transition-colors"
+                      title="Download"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 flex items-center gap-3">
+                <div className="p-2 bg-white/10 rounded-lg">
+                  <FileTypeIcon
+                    fileType={attachment.type}
+                    className="h-6 w-6 text-purple-400"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">
+                    {attachment.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground/60">
+                    {attachment.size
+                      ? `${Math.round(attachment.size / 1024)} KB`
+                      : "Unknown size"}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <a
+                    href={attachment.cloudinaryUrl || attachment.uploadcareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                    title="Open file"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                  <a
+                    href={attachment.cloudinaryUrl || attachment.uploadcareUrl}
+                    download={attachment.name}
+                    className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                    title="Download"
+                  >
+                    <Download className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   if (isTyping) {
@@ -229,53 +316,61 @@ export default function ChatMessage({
 
             <div className="relative z-10">
               {isUser ? (
-                <p className="whitespace-pre-wrap text-white">{content}</p>
+                <>
+                  <p className="whitespace-pre-wrap text-white">{content}</p>
+                  {renderAttachments()}
+                </>
               ) : (
-                <div className="prose prose-sm max-w-none dark:prose-invert prose-purple">
-                  <ReactMarkdown
-                    components={{
-                      code: CodeBlock,
-                      p: ({ children }) => (
-                        <p className="mb-2 last:mb-0">{children}</p>
-                      ),
-                      ul: ({ children }) => (
-                        <ul className="mb-2 last:mb-0 list-disc list-inside">
-                          {children}
-                        </ul>
-                      ),
-                      ol: ({ children }) => (
-                        <ol className="mb-2 last:mb-0 list-decimal list-inside">
-                          {children}
-                        </ol>
-                      ),
-                      li: ({ children }) => (
-                        <li className="mb-1">{children}</li>
-                      ),
-                      h1: ({ children }) => (
-                        <h1 className="text-lg font-bold mb-2">{children}</h1>
-                      ),
-                      h2: ({ children }) => (
-                        <h2 className="text-base font-bold mb-2">{children}</h2>
-                      ),
-                      h3: ({ children }) => (
-                        <h3 className="text-sm font-bold mb-2">{children}</h3>
-                      ),
-                      blockquote: ({ children }) => (
-                        <blockquote className="border-l-4 border-border pl-4 my-2 italic">
-                          {children}
-                        </blockquote>
-                      ),
-                      strong: ({ children }) => (
-                        <strong className="font-semibold">{children}</strong>
-                      ),
-                      em: ({ children }) => (
-                        <em className="italic">{children}</em>
-                      ),
-                    }}
-                  >
-                    {content}
-                  </ReactMarkdown>
-                </div>
+                <>
+                  <div className="prose prose-sm max-w-none dark:prose-invert prose-purple">
+                    <ReactMarkdown
+                      components={{
+                        code: CodeBlock,
+                        p: ({ children }) => (
+                          <p className="mb-2 last:mb-0">{children}</p>
+                        ),
+                        ul: ({ children }) => (
+                          <ul className="mb-2 last:mb-0 list-disc list-inside">
+                            {children}
+                          </ul>
+                        ),
+                        ol: ({ children }) => (
+                          <ol className="mb-2 last:mb-0 list-decimal list-inside">
+                            {children}
+                          </ol>
+                        ),
+                        li: ({ children }) => (
+                          <li className="mb-1">{children}</li>
+                        ),
+                        h1: ({ children }) => (
+                          <h1 className="text-lg font-bold mb-2">{children}</h1>
+                        ),
+                        h2: ({ children }) => (
+                          <h2 className="text-base font-bold mb-2">
+                            {children}
+                          </h2>
+                        ),
+                        h3: ({ children }) => (
+                          <h3 className="text-sm font-bold mb-2">{children}</h3>
+                        ),
+                        blockquote: ({ children }) => (
+                          <blockquote className="border-l-4 border-border pl-4 my-2 italic">
+                            {children}
+                          </blockquote>
+                        ),
+                        strong: ({ children }) => (
+                          <strong className="font-semibold">{children}</strong>
+                        ),
+                        em: ({ children }) => (
+                          <em className="italic">{children}</em>
+                        ),
+                      }}
+                    >
+                      {content}
+                    </ReactMarkdown>
+                  </div>
+                  {renderAttachments()}
+                </>
               )}
             </div>
           </div>

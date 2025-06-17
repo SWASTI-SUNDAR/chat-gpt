@@ -313,4 +313,25 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Ensure file inputs are completely hidden */
+  input[type="file"]:not(.visible),
+  input[role="uploadcare-uploader"] {
+    display: none !important;
+    visibility: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+  }
+
+  /* Hide any uploadcare generated elements that might show */
+  .uploadcare--widget {
+    display: none !important;
+  }
+
+  .uploadcare--widget__button {
+    display: none !important;
+  }
 }

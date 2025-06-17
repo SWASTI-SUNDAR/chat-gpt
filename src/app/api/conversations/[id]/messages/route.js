@@ -31,7 +31,7 @@ export async function GET(request, { params }) {
 
     const messages = await Message.find({ conversationId })
       .sort({ createdAt: 1 })
-      .select("role content metadata createdAt");
+      .select("role content attachments metadata createdAt");
 
     return NextResponse.json({ messages });
   } catch (error) {

@@ -19,7 +19,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { messages, conversationId, title } = await request.json();
+    const { messages, conversationId, title, attachments } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -66,7 +66,7 @@ export async function POST(request) {
       await conversation.save();
     }
 
-    // Save user message to database
+    // Save user message to database with attachments
     const latestMessage = messages[messages.length - 1];
     let savedUserMessage;
     if (latestMessage.role === "user") {
@@ -74,18 +74,35 @@ export async function POST(request) {
         conversationId: conversation._id,
         role: "user",
         content: latestMessage.content,
+        attachments: attachments || [], // Include file attachments
       });
 
       await savedUserMessage.save();
     }
 
-    // Trim messages to fit context window (GPT-3.5-turbo has ~16k tokens)
+    // Enhance messages with file context for AI - but don't overwhelm the context
+    const enhancedMessages = messages.map((msg) => {
+      if (msg.role === "user" && attachments && attachments.length > 0) {
+        // Create a simple file reference instead of full descriptions
+        const fileContext = attachments.length > 0 
+          ? `\n\n[User has attached ${attachments.length} file(s) for reference]`
+          : '';
+        
+        return {
+          ...msg,
+          content: `${msg.content}${fileContext}`,
+        };
+      }
+      return msg;
+    });
+
+    // Trim messages to fit context window
     const {
       messages: trimmedMessages,
       trimmedCount,
       originalCount,
       estimatedTokens,
-    } = trimMessagesToContextWindow(messages, 15000);
+    } = trimMessagesToContextWindow(enhancedMessages, 15000);
 
     if (trimmedCount < originalCount) {
       console.log(

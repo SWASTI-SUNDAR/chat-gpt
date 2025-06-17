@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Image, X, Sparkles, Zap } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Send, X, Sparkles, Zap, Loader2 } from "lucide-react";
+import FileUploadWidget, { FileTypeIcon } from "./FileUploadWidget";
 
 export default function MessageInput({
   onSendMessage,
@@ -10,8 +11,8 @@ export default function MessageInput({
 }) {
   const [message, setMessage] = useState("");
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const textareaRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -21,12 +22,54 @@ export default function MessageInput({
     }
   }, [message]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!message.trim() && attachedFiles.length === 0) return;
+
+    // Process files through Cloudinary before sending
+    let processedFiles = [];
+    if (attachedFiles.length > 0) {
+      setIsProcessingFiles(true);
+      try {
+        const response = await fetch("/api/files/process", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ files: attachedFiles }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          processedFiles = result.files;
+        } else {
+          console.log("File processing API not available, using files as-is");
+          // Use original files as fallback
+          processedFiles = attachedFiles.map((file) => ({
+            ...file,
+            cloudinaryUrl:
+              file.uploadcareUrl || file.url || URL.createObjectURL(file.file),
+            cloudinaryPublicId: null,
+          }));
+        }
+      } catch (error) {
+        console.log("File processing failed, using files as-is:", error);
+        // Use original files as fallback
+        processedFiles = attachedFiles.map((file) => ({
+          ...file,
+          cloudinaryUrl:
+            file.uploadcareUrl ||
+            file.url ||
+            (file.file ? URL.createObjectURL(file.file) : ""),
+          cloudinaryPublicId: null,
+        }));
+      } finally {
+        setIsProcessingFiles(false);
+      }
+    }
 
     onSendMessage({
       text: message,
-      files: attachedFiles,
+      files: processedFiles,
     });
 
     setMessage("");
@@ -45,34 +88,31 @@ export default function MessageInput({
     }
   };
 
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files || []);
-    const newFiles = files.map((file) => ({
-      id: Date.now() + Math.random(),
-      file,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      preview: file.type.startsWith("image/")
-        ? URL.createObjectURL(file)
-        : null,
-    }));
+  // Memoize the file selected handler to prevent duplicate calls
+  const handleFileSelected = useCallback((fileData) => {
+    setAttachedFiles((prev) => {
+      // Check if file with same ID already exists
+      const existingFile = prev.find((f) => f.id === fileData.id);
+      if (existingFile) {
+        console.log("File already exists, skipping duplicate");
+        return prev;
+      }
 
-    setAttachedFiles((prev) => [...prev, ...newFiles]);
-
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
+      console.log("Adding new file:", fileData.name);
+      return [...prev, fileData];
+    });
+  }, []);
 
   const removeFile = (fileId) => {
     setAttachedFiles((prev) => {
       const updatedFiles = prev.filter((f) => f.id !== fileId);
-      // Clean up object URLs for images
+      // Clean up object URLs for files to prevent memory leaks
       const fileToRemove = prev.find((f) => f.id === fileId);
-      if (fileToRemove?.preview) {
-        URL.revokeObjectURL(fileToRemove.preview);
+      if (
+        fileToRemove?.uploadcareUrl &&
+        fileToRemove.uploadcareUrl.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(fileToRemove.uploadcareUrl);
       }
       return updatedFiles;
     });
@@ -87,7 +127,9 @@ export default function MessageInput({
   };
 
   const isDisabled =
-    disabled || (!message.trim() && attachedFiles.length === 0);
+    disabled ||
+    isProcessingFiles ||
+    (!message.trim() && attachedFiles.length === 0);
 
   return (
     <div className="backdrop-blur-2xl bg-card/40 border-t border-white/10">
@@ -101,18 +143,37 @@ export default function MessageInput({
             {attachedFiles.map((file) => (
               <div key={file.id} className="relative group">
                 <div className="flex items-center gap-3 bg-gradient-to-r from-white/5 to-white/10 backdrop-blur-sm rounded-xl p-3 pr-10 max-w-xs sm:max-w-sm border border-white/10 hover:border-white/20 transition-all duration-300">
-                  {file.preview ? (
+                  {file.isImage && file.uploadcareUrl ? (
                     <div className="relative">
                       <img
-                        src={file.preview}
+                        src={
+                          file.uploadcareUrl.includes("ucarecdn.com")
+                            ? `${file.uploadcareUrl}-/preview/80x80/`
+                            : file.uploadcareUrl
+                        }
                         alt={file.name}
                         className="w-8 h-8 sm:w-10 sm:h-10 object-cover rounded-lg border border-white/10"
+                        onError={(e) => {
+                          // Fallback to file icon if image fails to load
+                          e.target.style.display = "none";
+                          e.target.nextSibling.style.display = "flex";
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-lg"></div>
+                      {/* Fallback icon (hidden by default) */}
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-lg flex items-center justify-center border border-white/10 hidden">
+                        <FileTypeIcon
+                          fileType={file.type}
+                          className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400"
+                        />
+                      </div>
                     </div>
                   ) : (
                     <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-lg flex items-center justify-center border border-white/10">
-                      <Paperclip className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" />
+                      <FileTypeIcon
+                        fileType={file.type}
+                        className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400"
+                      />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -137,38 +198,12 @@ export default function MessageInput({
 
         {/* Enhanced input area */}
         <div className="flex gap-3 sm:gap-4 items-end">
-          {/* Enhanced file upload buttons */}
+          {/* Enhanced file upload button */}
           <div className="flex gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              multiple
-              accept="image/*,.pdf,.doc,.docx,.txt"
-              className="hidden"
+            <FileUploadWidget
+              onFileSelected={handleFileSelected}
+              disabled={disabled || isProcessingFiles}
             />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={disabled}
-              className="p-3 rounded-xl bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-sm border border-white/10 hover:border-white/20 hover:from-purple-500/10 hover:to-pink-500/10 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110 group"
-              title="Attach files"
-            >
-              <Paperclip className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-purple-400 transition-colors duration-300" />
-            </button>
-            <button
-              onClick={() => {
-                if (fileInputRef.current) {
-                  fileInputRef.current.accept = "image/*";
-                  fileInputRef.current.click();
-                  fileInputRef.current.accept = "image/*,.pdf,.doc,.docx,.txt";
-                }
-              }}
-              disabled={disabled}
-              className="p-3 rounded-xl bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-sm border border-white/10 hover:border-white/20 hover:from-purple-500/10 hover:to-pink-500/10 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110 group"
-              title="Upload image"
-            >
-              <Image className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-purple-400 transition-colors duration-300" />
-            </button>
           </div>
 
           {/* Enhanced text input area */}
@@ -182,8 +217,10 @@ export default function MessageInput({
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={placeholder}
-                disabled={disabled}
+                placeholder={
+                  isProcessingFiles ? "Processing files..." : placeholder
+                }
+                disabled={disabled || isProcessingFiles}
                 className="w-full px-4 sm:px-6 py-3 sm:py-4 pr-12 sm:pr-16 resize-none focus:outline-none bg-transparent text-foreground placeholder:text-muted-foreground/60 transition-all min-h-[52px] sm:min-h-[60px] max-h-32 sm:max-h-40 overflow-y-auto text-sm sm:text-base relative z-10"
                 style={{ height: "52px" }}
               />
@@ -199,7 +236,9 @@ export default function MessageInput({
                 }`}
                 title="Send message"
               >
-                {isDisabled ? (
+                {isProcessingFiles ? (
+                  <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                ) : isDisabled ? (
                   <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                 ) : (
                   <Send className="h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-0.5 transition-transform duration-300" />
@@ -224,7 +263,7 @@ export default function MessageInput({
               <Zap className="h-3 w-3 text-purple-400/70" />
               <span>
                 {attachedFiles.length} file{attachedFiles.length > 1 ? "s" : ""}{" "}
-                attached
+                {isProcessingFiles ? "processing..." : "attached"}
               </span>
             </div>
           )}

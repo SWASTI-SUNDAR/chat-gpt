@@ -99,6 +99,7 @@ export default function Home() {
           id: msg._id,
           role: msg.role,
           content: msg.content,
+          attachments: msg.attachments || [], // Include attachments
         }));
         setMessages(loadedMessages);
         setCurrentConversationId(conversationId);
@@ -170,16 +171,8 @@ export default function Home() {
   const handleSendMessage = async ({ text, files }) => {
     if (!text.trim() && files.length === 0) return;
 
-    // Create message content
-    let messageContent = text;
-    if (files.length > 0) {
-      const fileDescriptions = files
-        .map((f) => `[Attached: ${f.name}]`)
-        .join(" ");
-      messageContent = text
-        ? `${text}\n\n${fileDescriptions}`
-        : fileDescriptions;
-    }
+    // Create simple message content without file descriptions in the visible text
+    const messageContent = text || "I've attached some files for you to review.";
 
     // Use the streaming append function
     try {
@@ -193,6 +186,7 @@ export default function Home() {
             body: {
               conversationId: currentConversationId,
               title: !currentConversationId ? text.substring(0, 50) : undefined,
+              attachments: files, // Include processed files
             },
           },
         }
@@ -200,15 +194,20 @@ export default function Home() {
 
       if (files.length > 0) {
         toast({
-          title: "Files processed",
-          description: `Successfully processed ${files.length} file${
+          title: "Files uploaded",
+          description: `Successfully uploaded ${files.length} file${
             files.length > 1 ? "s" : ""
           }.`,
-          variant: "success",
+          variant: "default",
         });
       }
     } catch (error) {
       console.error("Send message error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
