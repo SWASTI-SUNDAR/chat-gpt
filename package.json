@@ -16,6 +16,7 @@
     "@radix-ui/react-toast": "^1.1.5",
     "ai": "^3.4.33",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.6.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.514.0",
     "mongoose": "^8.0.3",
