@@ -27,7 +27,7 @@ export default function Page() {
         {/* Footer */}
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <a
               href="/sign-up"
               className="text-primary hover:text-primary/90 transition-colors duration-200 font-medium"
